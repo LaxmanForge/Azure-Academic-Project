@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZenType | Speed Test</title>
+    <style>
+        /* --- CSS VARIABLES FOR THEMES --- */
+        :root {
+            /* Light Mode: Soft Sage Green & White */
+            --bg-body: #8eb397; 
+            --bg-container: #769e81;
+            --text-main: #fdfdfd;
+            --text-muted: #d1e2d6;
+            --accent: #ffffff;
+            --caret: #ffffff;
+            --error: #ffb3b3;
+            --correct: #c3ffc3;
+        }
+
+        [data-theme="dark"] {
+            /* Dark Mode: Dark Blackish-Green */
+            --bg-body: #0d1711;
+            --bg-container: #15261c;
+            --text-main: #e2ede5;
+            --text-muted: #5c7a65;
+            --accent: #4ade80;
+            --caret: #4ade80;
+            --error: #f87171;
+            --correct: #86efac;
+        }
+
+        * {
+            box-sizing: border-box;
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        /* --- HEADER & TOGGLE --- */
+        header {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        .toggle-btn {
+            background-color: var(--bg-container);
+            color: var(--text-main);
+            border: 2px solid var(--text-muted);
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .toggle-btn:hover {
+            border-color: var(--accent);
+        }
+
+        /* --- TYPING CONTAINER --- */
+        .typing-container {
+            background-color: var(--bg-container);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 800px;
+        }
+
+        /* --- STATS PANEL --- */
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-bottom: 2px solid var(--text-muted);
+            padding-bottom: 15px;
+        }
+
+        .stat-box span {
+            color: var(--accent);
+            font-size: 1.5rem;
+        }
+
+        /* --- TEXT DISPLAY & INPUT --- */
+        .text-display {
+            font-size: 1.5rem;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            color: var(--text-muted);
+            user-select: none;
+        }
+
+        .text-display span.correct {
+            color: var(--correct);
+        }
+
+        .text-display span.incorrect {
+            color: var(--error);
+            text-decoration: underline;
+        }
+
+        .text-display span.active {
+            color: var(--text-main);
+            border-bottom: 2px solid var(--caret);
+        }
+
+        .type-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.2rem;
+            background-color: transparent;
+            border: 2px solid var(--text-muted);
+            color: var(--text-main);
+            border-radius: 8px;
+            outline: none;
+        }
+
+        .type-input:focus {
+            border-color: var(--accent);
+        }
+
+        /* --- RESTART BUTTON --- */
+        .restart-btn {
+            display: block;
+            width: 100%;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: transparent;
+            color: var(--text-main);
+            border: 2px solid var(--text-muted);
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .restart-btn:hover {
+            background-color: var(--text-muted);
+            color: var(--bg-body);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>ZenType</h1>
+        <button class="toggle-btn" id="theme-toggle">🌙 Dark Mode</button>
+    </header>
+
+    <div class="typing-container">
+        <div class="stats">
+            <div class="stat-box">Time: <span id="time">60</span>s</div>
+            <div class="stat-box">WPM: <span id="wpm">0</span></div>
+            <div class="stat-box">Accuracy: <span id="accuracy">100</span>%</div>
+        </div>
+
+        <div class="text-display" id="text-display"></div>
+        
+        <input type="text" class="type-input" id="type-input" placeholder="Start typing here..." autocomplete="off">
+        
+        <button class="restart-btn" id="restart-btn">Restart Test</button>
+    </div>
+
+    <script>
+        // --- 1. WEB AUDIO API FOR TYPING SOUND ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playClickSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            // Create a short, mechanical "tick" sound
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.03);
+            
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.03);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.03);
+        }
+
+        // --- 2. DARK MODE LOGIC ---
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        let isDarkMode = false;
+
+        themeToggleBtn.addEventListener('click', () => {
+            isDarkMode = !isDarkMode;
+            if (isDarkMode) {
+                document.body.setAttribute('data-theme', 'dark');
+                themeToggleBtn.innerText = '☀️ Light Mode';
+            } else {
+                document.body.removeAttribute('data-theme');
+                themeToggleBtn.innerText = '🌙 Dark Mode';
+            }
+        });
+
+        // --- 3. TYPING TEST LOGIC ---
+        const sampleTexts = [
+            "Cloud computing delivers computing services including servers, storage, databases, networking, software, and analytics over the internet.",
+            "Deploying an application using a continuous integration and continuous deployment pipeline ensures code reliability and rapid updates.",
+            "Serverless architecture allows developers to build and run applications without having to manage the underlying infrastructure."
+        ];
+
+        const textDisplay = document.getElementById('text-display');
+        const typeInput = document.getElementById('type-input');
+        const timeElement = document.getElementById('time');
+        const wpmElement = document.getElementById('wpm');
+        const accuracyElement = document.getElementById('accuracy');
+        const restartBtn = document.getElementById('restart-btn');
+
+        let timer = 60;
+        let timeLeft = timer;
+        let timeElapsed = 0;
+        let timerInterval = null;
+        let isTyping = false;
+        let currentText = "";
+        let charactersTyped = 0;
+        let correctCharacters = 0;
+
+        function initTest() {
+            // Pick a random sentence
+            currentText = sampleTexts[Math.floor(Math.random() * sampleTexts.length)];
+            textDisplay.innerHTML = '';
+            
+            // Split text into individual span elements for coloring
+            currentText.split('').forEach(char => {
+                let span = document.createElement('span');
+                span.innerText = char;
+                textDisplay.appendChild(span);
+            });
+            textDisplay.querySelectorAll('span')[0].classList.add('active');
+
+            // Reset variables
+            typeInput.value = '';
+            typeInput.disabled = false;
+            timeLeft = timer;
+            timeElapsed = 0;
+            charactersTyped = 0;
+            correctCharacters = 0;
+            isTyping = false;
+            clearInterval(timerInterval);
+            
+            timeElement.innerText = timeLeft;
+            wpmElement.innerText = 0;
+            accuracyElement.innerText = 100;
+        }
+
+        function updateTimer() {
+            if (timeLeft > 0) {
+                timeLeft--;
+                timeElapsed++;
+                timeElement.innerText = timeLeft;
+                
+                // Calculate WPM: (Correct Chars / 5) / (Time in minutes)
+                let wpm = Math.round(((correctCharacters / 5) / timeElapsed) * 60);
+                wpmElement.innerText = isNaN(wpm) || wpm < 0 ? 0 : wpm;
+            } else {
+                clearInterval(timerInterval);
+                typeInput.disabled = true;
+            }
+        }
+
+        typeInput.addEventListener('input', () => {
+            playClickSound();
+
+            if (!isTyping) {
+                timerInterval = setInterval(updateTimer, 1000);
+                isTyping = true;
+            }
+
+            const arrayQuote = textDisplay.querySelectorAll('span');
+            const arrayValue = typeInput.value.split('');
+            
+            charactersTyped++;
+            correctCharacters = 0;
+
+            let allCorrect = true;
+
+            arrayQuote.forEach((characterSpan, index) => {
+                const character = arrayValue[index];
+                
+                // Remove active class from all
+                characterSpan.classList.remove('active');
+
+                if (character == null) {
+                    // Not typed yet
+                    characterSpan.classList.remove('correct');
+                    characterSpan.classList.remove('incorrect');
+                    allCorrect = false;
+                } else if (character === characterSpan.innerText) {
+                    // Typed correctly
+                    characterSpan.classList.add('correct');
+                    characterSpan.classList.remove('incorrect');
+                    correctCharacters++;
+                } else {
+                    // Typed incorrectly
+                    characterSpan.classList.remove('correct');
+                    characterSpan.classList.add('incorrect');
+                    allCorrect = false;
+                }
+            });
+
+            // Set the "caret" (underline) on the current letter
+            if(arrayValue.length < arrayQuote.length) {
+                arrayQuote[arrayValue.length].classList.add('active');
+            }
+
+            // Calculate Accuracy
+            let accuracy = Math.round((correctCharacters / arrayValue.length) * 100);
+            accuracyElement.innerText = isNaN(accuracy) ? 100 : accuracy;
+
+            // Stop if finished early
+            if (arrayValue.length === arrayQuote.length && allCorrect) {
+                clearInterval(timerInterval);
+                typeInput.disabled = true;
+            }
+        });
+
+        restartBtn.addEventListener('click', initTest);
+
+        // Initialize on load
+        initTest();
+    </script>
+</body>
+</html>
