@@ -7,19 +7,25 @@
     <style>
         /* --- CSS VARIABLES FOR THEMES --- */
         :root {
-            /* Light Mode: Soft Sage Green & White */
+            /* Light Mode: Deep Sage Vibe with High-Contrast Text */
             --bg-body: #8eb397; 
             --bg-container: #769e81;
-            --text-main: #fdfdfd;
-            --text-muted: #d1e2d6;
-            --accent: #ffffff;
-            --caret: #ffffff;
-            --error: #ffb3b3;
-            --correct: #c3ffc3;
+            
+            /* Text Colors */
+            --text-main: #ffffff;      /* Typed words are stark white for high contrast */
+            --text-muted: #2c4233;     /* Untyped words are dark smoky green for readability */
+            
+            /* Accents */
+            --accent: #2c4233;         /* Dark green for headers and stats */
+            --caret: #4ade80;          /* Bright green underline for current letter */
+            
+            /* Status Colors */
+            --error: #ff4d4d;          /* Bright red for errors */
+            --correct: #ffffff;        /* White for correct */
         }
 
         [data-theme="dark"] {
-            /* Dark Mode: Dark Blackish-Green */
+            /* Dark Mode: Dark Blackish-Green (Unchanged) */
             --bg-body: #0d1711;
             --bg-container: #15261c;
             --text-main: #e2ede5;
@@ -32,7 +38,7 @@
 
         * {
             box-sizing: border-box;
-            transition: background-color 0.4s ease, color 0.4s ease;
+            transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
         }
 
         body {
@@ -57,18 +63,20 @@
             align-items: center;
             padding: 20px;
             margin-bottom: 20px;
+            color: var(--text-main);
         }
 
         h1 {
             margin: 0;
             font-weight: 600;
             letter-spacing: 1px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
         }
 
         .toggle-btn {
             background-color: var(--bg-container);
             color: var(--text-main);
-            border: 2px solid var(--text-muted);
+            border: 2px solid var(--text-main);
             padding: 8px 16px;
             border-radius: 20px;
             cursor: pointer;
@@ -76,7 +84,8 @@
         }
 
         .toggle-btn:hover {
-            border-color: var(--accent);
+            background-color: var(--text-main);
+            color: var(--bg-container);
         }
 
         /* --- TYPING CONTAINER --- */
@@ -84,7 +93,7 @@
             background-color: var(--bg-container);
             padding: 40px;
             border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
             width: 90%;
             max-width: 800px;
         }
@@ -96,13 +105,15 @@
             margin-bottom: 30px;
             font-size: 1.2rem;
             font-weight: 600;
-            border-bottom: 2px solid var(--text-muted);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.3);
             padding-bottom: 15px;
+            color: var(--text-main);
         }
 
         .stat-box span {
-            color: var(--accent);
+            color: var(--text-main);
             font-size: 1.5rem;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
         }
 
         /* --- TEXT DISPLAY & INPUT --- */
@@ -110,37 +121,45 @@
             font-size: 1.5rem;
             line-height: 1.6;
             margin-bottom: 30px;
-            color: var(--text-muted);
+            color: var(--text-muted); /* Dark text for readability */
             user-select: none;
+            font-weight: 500;
         }
 
         .text-display span.correct {
-            color: var(--correct);
+            color: var(--correct); /* Turns white when typed */
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
         }
 
         .text-display span.incorrect {
             color: var(--error);
             text-decoration: underline;
+            text-decoration-thickness: 3px;
         }
 
         .text-display span.active {
-            color: var(--text-main);
-            border-bottom: 2px solid var(--caret);
+            color: var(--text-muted); 
+            border-bottom: 3px solid var(--caret); /* Bright green underline */
         }
 
         .type-input {
             width: 100%;
             padding: 15px;
             font-size: 1.2rem;
-            background-color: transparent;
-            border: 2px solid var(--text-muted);
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.5);
             color: var(--text-main);
             border-radius: 8px;
             outline: none;
         }
 
         .type-input:focus {
-            border-color: var(--accent);
+            border-color: var(--text-main);
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .type-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
         }
 
         /* --- RESTART BUTTON --- */
@@ -151,16 +170,18 @@
             padding: 15px;
             background-color: transparent;
             color: var(--text-main);
-            border: 2px solid var(--text-muted);
+            border: 2px solid var(--text-main);
             border-radius: 8px;
             font-size: 1.1rem;
             font-weight: bold;
             cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .restart-btn:hover {
-            background-color: var(--text-muted);
-            color: var(--bg-body);
+            background-color: var(--text-main);
+            color: var(--bg-container);
         }
     </style>
 </head>
@@ -192,7 +213,6 @@
         function playClickSound() {
             if (audioCtx.state === 'suspended') audioCtx.resume();
             
-            // Create a short, mechanical "tick" sound
             const oscillator = audioCtx.createOscillator();
             const gainNode = audioCtx.createGain();
             
@@ -249,11 +269,9 @@
         let correctCharacters = 0;
 
         function initTest() {
-            // Pick a random sentence
             currentText = sampleTexts[Math.floor(Math.random() * sampleTexts.length)];
             textDisplay.innerHTML = '';
             
-            // Split text into individual span elements for coloring
             currentText.split('').forEach(char => {
                 let span = document.createElement('span');
                 span.innerText = char;
@@ -261,7 +279,6 @@
             });
             textDisplay.querySelectorAll('span')[0].classList.add('active');
 
-            // Reset variables
             typeInput.value = '';
             typeInput.disabled = false;
             timeLeft = timer;
@@ -282,7 +299,6 @@
                 timeElapsed++;
                 timeElement.innerText = timeLeft;
                 
-                // Calculate WPM: (Correct Chars / 5) / (Time in minutes)
                 let wpm = Math.round(((correctCharacters / 5) / timeElapsed) * 60);
                 wpmElement.innerText = isNaN(wpm) || wpm < 0 ? 0 : wpm;
             } else {
@@ -310,37 +326,30 @@
             arrayQuote.forEach((characterSpan, index) => {
                 const character = arrayValue[index];
                 
-                // Remove active class from all
                 characterSpan.classList.remove('active');
 
                 if (character == null) {
-                    // Not typed yet
                     characterSpan.classList.remove('correct');
                     characterSpan.classList.remove('incorrect');
                     allCorrect = false;
                 } else if (character === characterSpan.innerText) {
-                    // Typed correctly
                     characterSpan.classList.add('correct');
                     characterSpan.classList.remove('incorrect');
                     correctCharacters++;
                 } else {
-                    // Typed incorrectly
                     characterSpan.classList.remove('correct');
                     characterSpan.classList.add('incorrect');
                     allCorrect = false;
                 }
             });
 
-            // Set the "caret" (underline) on the current letter
             if(arrayValue.length < arrayQuote.length) {
                 arrayQuote[arrayValue.length].classList.add('active');
             }
 
-            // Calculate Accuracy
             let accuracy = Math.round((correctCharacters / arrayValue.length) * 100);
             accuracyElement.innerText = isNaN(accuracy) ? 100 : accuracy;
 
-            // Stop if finished early
             if (arrayValue.length === arrayQuote.length && allCorrect) {
                 clearInterval(timerInterval);
                 typeInput.disabled = true;
@@ -349,7 +358,6 @@
 
         restartBtn.addEventListener('click', initTest);
 
-        // Initialize on load
         initTest();
     </script>
 </body>
